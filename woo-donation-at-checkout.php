@@ -2,7 +2,7 @@
 /*
 Plugin Name: Donations For WooCommerce
 Description: Allows users to make a donation at checkout. This donation could go to a charity or cause of some sort. However is handled as an additional upselling product,
-Version: 1.2
+Version: 1.2.1
 Author: YooHoo Plugins
 */
 
@@ -139,7 +139,7 @@ function wdac_insert_opt_in_cart_view(){
             } else {
                 $prompt_title .= " (" . get_woocommerce_currency_symbol()  . sprintf("%.2f", $wdac_active_campaign->amount) . ")";
             }
-            $prompt_button = "<a class='button wdac_button wdac_dynamic_button' href='?wdac_donate_campaign_id=".$wdac_active_campaign->id.$forcd_default_amount_query."'>" . $prompt_title . "</a>";
+            $prompt_button = "<a class='button wdac_button wdac_dynamic_button' href='?wdac_donate_campaign_id=".$wdac_active_campaign->id.$forcd_default_amount_query."'>" . esc_attr($prompt_title) . "</a>";
 
             $prompt_desc = "";
 
