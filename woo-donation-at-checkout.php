@@ -1,15 +1,9 @@
 <?php
 /*
-Plugin Name: Woo Donation At Checkout
+Plugin Name: Donations For WooCommerce
 Description: Allows users to make a donation at checkout. This donation could go to a charity or cause of some sort. However is handled as an additional upselling product,
-Version: 1.1
-Author: Andrew Lima
-*/
-
-/*
- * 1.1 - Added Image Support, Custom User Donation Amount, Custom User Campaign Selection
- *
- * 1.0 - Debut
+Version: 1.2
+Author: YooHoo Plugins
 */
 
 global $wdac_donations_table, $wdac_donations_reporting, $wpdb;
@@ -62,7 +56,7 @@ function wdac_reporting_database_tables(){
 
 function wdac_admin_menu() {
     $show_in_menu = current_user_can( 'manage_woocommerce' ) ? 'woocommerce' : false;
-    $discount_slug = add_submenu_page( $show_in_menu, __( 'Donation At Checkout' ), __( 'Donation At Checkout' ), 'manage_woocommerce', 'wdac_primary_settings', 'wdac_settings_area');
+    $discount_slug = add_submenu_page( $show_in_menu, __( 'Donations' ), __( 'Donations' ), 'manage_woocommerce', 'wdac_primary_settings', 'wdac_settings_area');
 
 
     do_action("wdac_admin_menu_below");
@@ -175,11 +169,16 @@ add_action("woocommerce_after_cart_table", "wdac_insert_opt_in_cart_view", 99);
 add_action("woocommerce_review_order_after_payment", "wdac_insert_opt_in_cart_view", 99);
 
 function wdac_check_for_donations_before_cart(){
+
+    if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
+        return;
+    }
+
     if(isset($_GET['wdac_donate_campaign_id'])){
         $wdac_global_options = wdac_donations_get_global_options();
-        $wdac_campaign = wdac_campaign_get_data(intval($_GET['wdac_donate_campaign_id']));
+       $wdac_campaign = wdac_campaign_get_data(intval($_GET['wdac_donate_campaign_id']));
 
-        if($campaign_details !== false){
+        if($wdac_campaign !== false){
             global $woocommerce;
 
             $charge_title = isset($wdac_global_options['wdac_donate_prefix']) ? htmlspecialchars($wdac_global_options['wdac_donate_prefix']) : __("Donate to");
@@ -188,24 +187,36 @@ function wdac_check_for_donations_before_cart(){
             $override_value = false;
             if(isset($_GET['wdac_amount_overide'])){
                 $override_value = floatval($_GET['wdac_amount_overide']);
-                $woocommerce->cart->add_fee( $charge_title, $override_value);
+                $woocommerce->cart->add_fee( $charge_title, $override_value );
             } else {
-                $woocommerce->cart->add_fee( $charge_title, floatval($wdac_campaign->amount));
+                $woocommerce->cart->add_fee( $charge_title, floatval($wdac_campaign->amount) );
             }
 
             wdac_embed_js_form_manipulators($_GET['wdac_donate_campaign_id'], $override_value);
         }
-
-
     }
 
 }
-add_action("woocommerce_cart_calculate_fees", "wdac_check_for_donations_before_cart");
+add_action("woocommerce_cart_calculate_fees", "wdac_check_for_donations_before_cart", 5);
 
 function wdac_embed_js_form_manipulators($campaign_id, $override_value = false){
+    if( isset($_GET['wc-ajax']) ){
+        return;
+    }
     ?>
     <script>
     jQuery(document).ready(function(){
+        if (typeof wc_checkout_params !== "undefined"){
+            wc_checkout_params['wc_ajax_url'] += "&wdac_donate_campaign_id=<?php echo $campaign_id; ?>";
+            <?php
+            if($override_value !== false){
+                ?>
+                wc_checkout_params['wc_ajax_url'] += "&wdac_amount_overide=<?php echo $override_value; ?>";
+
+                <?php
+            }
+            ?>
+        }   
         var current_url = jQuery(".wc-proceed-to-checkout a").attr('href');
         jQuery(".wc-proceed-to-checkout a").attr('href', current_url + "?wdac_donate_campaign_id=<?php echo $campaign_id; echo (isset($override_value) && $override_value !== false) ? "&wdac_amount_overide=" . $override_value : ""; ?>");
     });
@@ -376,7 +387,7 @@ function wdac_get_active_campaign($wdac_global_options = false){
 function wdac_settings_area(){
     ?>
     <div class="wrap">
-        <h3><?php _e("Donation At Checkout"); ?> <?php wdac_get_action_buttons(); ?></h3>
+        <h3><?php _e("Donation Settings"); ?> <?php wdac_get_action_buttons(); ?></h3>
         <?php wdac_donations_check_header(); wdac_donations_action_check(); wdac_donations_table(); ?>
         <br>
         <a id='wdac_add_btn' href="admin.php?page=wdac_primary_settings&action=new" class="button button-primary"><?php _e("Add New"); ?></a>
@@ -450,7 +461,7 @@ function wdac_donations_global_options(){
 
             <tr>
                 <td>
-                    <label><?php _e("Allow User Amount"); ?>:</label>
+                    <label><?php _e("Allow Custom Amount"); ?>:</label>
                 </td>
                 <td>
                     <input type='checkbox' name='wdac_user_amount' <?php echo(isset($wdac_global_options['wdac_user_amount']) && $wdac_global_options['wdac_user_amount'] === '1' ? 'checked' : ''); ?> > <small><?php _e("Allows user to enter their own amount for donation. Note, standard donation amount will be ignored"); ?></small>
